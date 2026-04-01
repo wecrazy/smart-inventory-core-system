@@ -24,9 +24,35 @@ profile.cov
 go.work
 go.work.sum
 
+# OS artifacts
+.DS_Store
+Thumbs.db
+
 # env file
 .env
 
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Backend
+backend/.env
+backend/.env.local
+backend/.env.*.local
+backend/bin/
+
+# Frontend
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.vitest/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/vitest.config.js
+frontend/vitest.config.d.ts
+
+*.log
