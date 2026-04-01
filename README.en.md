@@ -60,16 +60,16 @@ The Mermaid diagrams below are there to clarify the two hardest parts of the sys
 ```mermaid
 flowchart LR
   subgraph FE[Frontend React]
-    Pages[Pages\nInventory | Stock In | Stock Out | Reports]
-    State[Redux Store + RTK Query]
+    Pages["Pages<br/>Inventory, Stock In, Stock Out, Reports"]
+    State["Redux Store<br/>RTK Query"]
     Pages --> State
   end
 
   subgraph BE[Backend Go Fiber]
-    HTTP[HTTP Router + Handlers]
-    Service[Service Layer\nvalidation + use-case orchestration]
-    Domain[Domain Rules\nstatus transitions + audit rules]
-    Repo[PostgreSQL Repository\ndatabase transactions + row locking]
+    HTTP["HTTP Router<br/>Handlers"]
+    Service["Service Layer<br/>validation + use-case orchestration"]
+    Domain["Domain Rules<br/>status transitions + audit rules"]
+    Repo["PostgreSQL Repository<br/>database transactions + row locking"]
     HTTP --> Service
     Service --> Domain
     Service --> Repo

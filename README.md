@@ -65,16 +65,16 @@ Diagram Mermaid di bawah ini ditambahkan untuk membantu pembaca GitHub memahami 
 ```mermaid
 flowchart LR
   subgraph FE[Frontend React]
-    Pages[Pages\nInventory | Stock In | Stock Out | Reports]
-    State[Redux Store + RTK Query]
+    Pages["Pages<br/>Inventory, Stock In, Stock Out, Reports"]
+    State["Redux Store<br/>RTK Query"]
     Pages --> State
   end
 
   subgraph BE[Backend Go Fiber]
-    HTTP[HTTP Router + Handlers]
-    Service[Service Layer\nvalidasi + orkestrasi use case]
-    Domain[Domain Rules\ntransisi status + audit rule]
-    Repo[PostgreSQL Repository\ntransaction + row locking]
+    HTTP["HTTP Router<br/>Handlers"]
+    Service["Service Layer<br/>validasi + orkestrasi use case"]
+    Domain["Domain Rules<br/>transisi status + audit rule"]
+    Repo["PostgreSQL Repository<br/>transaction + row locking"]
     HTTP --> Service
     Service --> Domain
     Service --> Repo
