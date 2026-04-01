@@ -1,0 +1,1177 @@
+basePath: /api/v1
+consumes:
+- application/json
+definitions:
+  domain.HistoryEntry:
+    properties:
+      createdAt:
+        example: "2026-04-01T10:30:00Z"
+        type: string
+      note:
+        example: Checked and ready for next step
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/domain.TransactionStatus'
+        enum:
+        - CREATED
+        - ALLOCATED
+        - IN_PROGRESS
+        - DONE
+        - CANCELLED
+        example: IN_PROGRESS
+    type: object
+  domain.Inventory:
+    properties:
+      availableStock:
+        example: 100
+        type: integer
+      createdAt:
+        example: "2026-04-01T10:00:00Z"
+        type: string
+      customerName:
+        example: Acme Corp
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Widget A
+        type: string
+      physicalStock:
+        example: 120
+        type: integer
+      reservedStock:
+        example: 20
+        type: integer
+      sku:
+        example: SKU-001
+        type: string
+      updatedAt:
+        example: "2026-04-01T12:00:00Z"
+        type: string
+    type: object
+  domain.Transaction:
+    properties:
+      completedAt:
+        example: "2026-04-01T12:15:00Z"
+        type: string
+      createdAt:
+        example: "2026-04-01T09:00:00Z"
+        type: string
+      history:
+        items:
+          $ref: '#/definitions/domain.HistoryEntry'
+        type: array
+      id:
+        example: 17
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/domain.TransactionItem'
+        type: array
+      note:
+        example: Morning warehouse receipt
+        type: string
+      referenceCode:
+        example: IN-20260401-001
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/domain.TransactionStatus'
+        enum:
+        - CREATED
+        - ALLOCATED
+        - IN_PROGRESS
+        - DONE
+        - CANCELLED
+        example: DONE
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.TransactionType'
+        enum:
+        - STOCK_IN
+        - STOCK_OUT
+        - ADJUSTMENT
+        example: STOCK_IN
+      updatedAt:
+        example: "2026-04-01T12:15:00Z"
+        type: string
+    type: object
+  domain.TransactionItem:
+    properties:
+      customerName:
+        example: Acme Corp
+        type: string
+      inventoryId:
+        example: 1
+        type: integer
+      name:
+        example: Widget A
+        type: string
+      quantity:
+        example: 10
+        type: integer
+      sku:
+        example: SKU-001
+        type: string
+    type: object
+  domain.TransactionStatus:
+    enum:
+    - CREATED
+    - ALLOCATED
+    - IN_PROGRESS
+    - DONE
+    - CANCELLED
+    type: string
+    x-enum-varnames:
+    - StatusCreated
+    - StatusAllocated
+    - StatusInProgress
+    - StatusDone
+    - StatusCancelled
+  domain.TransactionType:
+    enum:
+    - STOCK_IN
+    - STOCK_OUT
+    - ADJUSTMENT
+    type: string
+    x-enum-varnames:
+    - TypeStockIn
+    - TypeStockOut
+    - TypeAdjustment
+  http.adjustInventoryRequest:
+    properties:
+      inventoryId:
+        example: 1
+        type: integer
+      newPhysicalStock:
+        example: 140
+        type: integer
+      note:
+        example: Cycle count correction
+        type: string
+      referenceCode:
+        example: ADJ-20260401-001
+        type: string
+    type: object
+  http.cancelTransactionRequest:
+    properties:
+      note:
+        example: Cancelled by operator
+        type: string
+    type: object
+  http.createInventoryRequest:
+    properties:
+      customerName:
+        example: Acme Corp
+        type: string
+      name:
+        example: Widget A
+        type: string
+      physicalStock:
+        example: 120
+        type: integer
+      sku:
+        example: SKU-001
+        type: string
+    type: object
+  http.createTransactionRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/http.transactionItemRequest'
+        type: array
+      note:
+        example: Morning warehouse receipt
+        type: string
+      referenceCode:
+        example: IN-20260401-001
+        type: string
+    type: object
+  http.envelope:
+    properties:
+      data: {}
+      error:
+        type: string
+    type: object
+  http.healthStatus:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
+  http.reportListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/domain.Transaction'
+        type: array
+      limit:
+        example: 10
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 25
+        type: integer
+      unitsIn:
+        example: 220
+        type: integer
+      unitsOut:
+        example: 180
+        type: integer
+    type: object
+  http.transactionItemRequest:
+    properties:
+      inventoryId:
+        example: 1
+        type: integer
+      quantity:
+        example: 10
+        type: integer
+    type: object
+  http.updateStatusRequest:
+    properties:
+      note:
+        example: Checked and ready for next step
+        type: string
+      status:
+        enum:
+        - IN_PROGRESS
+        - DONE
+        example: IN_PROGRESS
+        type: string
+    type: object
+info:
+  contact: {}
+  description: |-
+    Inventory, stock-in, stock-out, adjustment, and reporting API for the Smart Inventory Core System assessment.
+    Swagger docs are generated from Fiber handler annotations and served by the backend itself.
+  title: Smart Inventory Core System API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Returns a lightweight status response for local smoke checks and
+        uptime monitoring.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/http.healthStatus'
+              type: object
+      summary: Health check
+      tags:
+      - System
+  /inventory:
+    get:
+      description: Returns inventory items filtered by free-text search, SKU, and
+        customer.
+      parameters:
+      - description: Search by inventory name or SKU
+        in: query
+        name: search
+        type: string
+      - description: Filter by SKU
+        in: query
+        name: sku
+        type: string
+      - description: Filter by customer name
+        in: query
+        name: customer
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.Inventory'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: List inventory
+      tags:
+      - Inventory
+    post:
+      consumes:
+      - application/json
+      description: Creates a new inventory record with initial physical stock.
+      parameters:
+      - description: Inventory payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.createInventoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Inventory'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Create inventory item
+      tags:
+      - Inventory
+  /inventory/adjustments:
+    post:
+      consumes:
+      - application/json
+      description: Applies a physical stock correction as a dedicated adjustment transaction
+        instead of a silent overwrite.
+      parameters:
+      - description: Adjustment payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.adjustInventoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Adjust inventory stock
+      tags:
+      - Inventory
+  /reports:
+    get:
+      description: Returns only DONE stock-in and DONE stock-out transactions for
+        reporting, with paginated transaction-level detail and filter support.
+      parameters:
+      - description: Optional transaction type filter
+        enum:
+        - STOCK_IN
+        - STOCK_OUT
+        in: query
+        name: type
+        type: string
+      - description: Partial reference code filter
+        in: query
+        name: referenceCode
+        type: string
+      - description: Inclusive completed date filter
+        format: date
+        in: query
+        name: completedFrom
+        type: string
+      - description: Inclusive completed end date filter
+        format: date
+        in: query
+        name: completedTo
+        type: string
+      - description: Max number of report transactions to return
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: Zero-based offset for report pagination
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/http.reportListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: List completed movement reports
+      tags:
+      - Reports
+  /reports/export:
+    get:
+      description: Exports all DONE stock-in and DONE stock-out transactions matching
+        the provided filters as a CSV download.
+      parameters:
+      - description: Optional transaction type filter
+        enum:
+        - STOCK_IN
+        - STOCK_OUT
+        in: query
+        name: type
+        type: string
+      - description: Partial reference code filter
+        in: query
+        name: referenceCode
+        type: string
+      - description: Inclusive completed date filter
+        format: date
+        in: query
+        name: completedFrom
+        type: string
+      - description: Inclusive completed end date filter
+        format: date
+        in: query
+        name: completedTo
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Export completed movement reports as CSV
+      tags:
+      - Reports
+  /stock-in:
+    get:
+      description: Returns inbound transactions and can filter by status.
+      parameters:
+      - description: Optional stock-in status filter
+        enum:
+        - CREATED
+        - IN_PROGRESS
+        - DONE
+        - CANCELLED
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.Transaction'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: List stock-in transactions
+      tags:
+      - Stock In
+    post:
+      consumes:
+      - application/json
+      description: Creates an inbound transaction in CREATED state with one or more
+        line items.
+      parameters:
+      - description: Stock-in payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.createTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Create stock-in transaction
+      tags:
+      - Stock In
+  /stock-in/{id}:
+    get:
+      description: Returns a single stock-in transaction including its items and status
+        history.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Get stock-in transaction
+      tags:
+      - Stock In
+  /stock-in/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancels a stock-in transaction before it is completed.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Optional cancellation note
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/http.cancelTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Cancel stock-in transaction
+      tags:
+      - Stock In
+  /stock-in/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Advances a stock-in transaction to IN_PROGRESS or DONE.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Next stock-in status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.updateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Update stock-in status
+      tags:
+      - Stock In
+  /stock-out:
+    get:
+      description: Returns outbound transactions and can filter by status.
+      parameters:
+      - description: Optional stock-out status filter
+        enum:
+        - ALLOCATED
+        - IN_PROGRESS
+        - DONE
+        - CANCELLED
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.Transaction'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: List stock-out transactions
+      tags:
+      - Stock Out
+    post:
+      consumes:
+      - application/json
+      description: Creates an outbound transaction in ALLOCATED state and reserves
+        the requested stock.
+      parameters:
+      - description: Stock-out payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.createTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Create stock-out transaction
+      tags:
+      - Stock Out
+  /stock-out/{id}:
+    get:
+      description: Returns a single stock-out transaction including items and history.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Get stock-out transaction
+      tags:
+      - Stock Out
+  /stock-out/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancels a stock-out transaction and releases reserved stock.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Optional cancellation note
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/http.cancelTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Cancel stock-out transaction
+      tags:
+      - Stock Out
+  /stock-out/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Advances a stock-out transaction to IN_PROGRESS or DONE.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Next stock-out status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.updateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.Transaction'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.envelope'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Update stock-out status
+      tags:
+      - Stock Out
+produces:
+- application/json
+schemes:
+- http
+swagger: "2.0"
+tags:
+- description: Operational endpoints such as health checks and documentation.
+  name: System
+- description: Inventory master data and auditable stock adjustments.
+  name: Inventory
+- description: Inbound transaction lifecycle from creation to completion or cancellation.
+  name: Stock In
+- description: Reservation-safe outbound transaction lifecycle.
+  name: Stock Out
+- description: Done-only reporting endpoints.
+  name: Reports
