@@ -53,6 +53,81 @@ The frontend uses Redux Toolkit and RTK Query:
 - `frontend/src/app/baseApi.ts` and split endpoint modules handle API communication.
 - pages are separated by workflow: Inventory, Stock In, Stock Out, and Reports.
 
+The Mermaid diagrams below are there to clarify the two hardest parts of the system at a glance: the layered architecture and the transaction status workflows. On GitHub these render as static diagrams, which is the right fit here; this README needs clarity, not animation.
+
+### Architecture Diagram
+
+```mermaid
+flowchart LR
+  subgraph FE[Frontend React]
+    Pages[Pages\nInventory | Stock In | Stock Out | Reports]
+    State[Redux Store + RTK Query]
+    Pages --> State
+  end
+
+  subgraph BE[Backend Go Fiber]
+    HTTP[HTTP Router + Handlers]
+    Service[Service Layer\nvalidation + use-case orchestration]
+    Domain[Domain Rules\nstatus transitions + audit rules]
+    Repo[PostgreSQL Repository\ndatabase transactions + row locking]
+    HTTP --> Service
+    Service --> Domain
+    Service --> Repo
+  end
+
+  DB[(PostgreSQL)]
+  Swagger[Swagger UI]
+
+  State --> HTTP
+  Repo --> DB
+  HTTP --> Swagger
+```
+
+### Workflow Diagrams
+
+#### Stock-In
+
+```mermaid
+stateDiagram-v2
+  [*] --> CREATED
+  CREATED --> IN_PROGRESS: operator starts processing
+  CREATED --> CANCELLED: cancelled before completion
+  IN_PROGRESS --> DONE: stock applied to inventory
+  IN_PROGRESS --> CANCELLED: cancelled before completion
+  DONE --> [*]
+  CANCELLED --> [*]
+
+  note right of DONE
+    physical_stock increases
+    included in done-only reporting
+  end note
+```
+
+#### Stock-Out
+
+```mermaid
+stateDiagram-v2
+  [*] --> ALLOCATED: reserve available stock
+  ALLOCATED --> IN_PROGRESS: operator starts picking
+  ALLOCATED --> CANCELLED: release reservation
+  IN_PROGRESS --> DONE: finalize outbound movement
+  IN_PROGRESS --> CANCELLED: release reservation
+  DONE --> [*]
+  CANCELLED --> [*]
+
+  note right of ALLOCATED
+    reserved_stock increases
+    available_stock decreases
+  end note
+
+  note right of DONE
+    physical_stock decreases
+    included in done-only reporting
+  end note
+```
+
+`ADJUSTMENT` is still stored as an auditable transaction, but it is intentionally excluded from reports because reporting only includes `DONE` stock-in and stock-out transactions.
+
 ## Architecture Decision Summary
 
 ### Context

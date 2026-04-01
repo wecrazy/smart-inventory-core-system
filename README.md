@@ -58,6 +58,81 @@ Frontend menggunakan Redux Toolkit + RTK Query:
 - `frontend/src/app/baseApi.ts` dan file endpoint terpisah menangani komunikasi API.
 - Feature page dipisah berdasarkan domain: Inventory, Stock In, Stock Out, dan Reports.
 
+Diagram Mermaid di bawah ini ditambahkan untuk membantu pembaca GitHub memahami boundary sistem dan alur status inti tanpa harus menafsirkan semua penjelasan tekstual terlebih dahulu.
+
+### Diagram Arsitektur
+
+```mermaid
+flowchart LR
+  subgraph FE[Frontend React]
+    Pages[Pages\nInventory | Stock In | Stock Out | Reports]
+    State[Redux Store + RTK Query]
+    Pages --> State
+  end
+
+  subgraph BE[Backend Go Fiber]
+    HTTP[HTTP Router + Handlers]
+    Service[Service Layer\nvalidasi + orkestrasi use case]
+    Domain[Domain Rules\ntransisi status + audit rule]
+    Repo[PostgreSQL Repository\ntransaction + row locking]
+    HTTP --> Service
+    Service --> Domain
+    Service --> Repo
+  end
+
+  DB[(PostgreSQL)]
+  Swagger[Swagger UI]
+
+  State --> HTTP
+  Repo --> DB
+  HTTP --> Swagger
+```
+
+### Diagram Workflow Status
+
+#### Stock-In
+
+```mermaid
+stateDiagram-v2
+  [*] --> CREATED
+  CREATED --> IN_PROGRESS: operator mulai proses
+  CREATED --> CANCELLED: dibatalkan sebelum selesai
+  IN_PROGRESS --> DONE: stok fisik ditambahkan
+  IN_PROGRESS --> CANCELLED: dibatalkan sebelum selesai
+  DONE --> [*]
+  CANCELLED --> [*]
+
+  note right of DONE
+    physical_stock bertambah
+    masuk ke report DONE
+  end note
+```
+
+#### Stock-Out
+
+```mermaid
+stateDiagram-v2
+  [*] --> ALLOCATED: reserve available stock
+  ALLOCATED --> IN_PROGRESS: operator mulai picking
+  ALLOCATED --> CANCELLED: rollback reservasi
+  IN_PROGRESS --> DONE: stok keluar difinalkan
+  IN_PROGRESS --> CANCELLED: rollback reservasi
+  DONE --> [*]
+  CANCELLED --> [*]
+
+  note right of ALLOCATED
+    reserved_stock naik
+    available_stock turun
+  end note
+
+  note right of DONE
+    physical_stock turun
+    masuk ke report DONE
+  end note
+```
+
+`ADJUSTMENT` tetap disimpan sebagai transaksi audit, tetapi tidak masuk report karena report hanya mengambil stock-in dan stock-out dengan status `DONE`.
+
 ## Keputusan Arsitektur
 
 ### Konteks
